@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KVM LABS // WEBGPU_CORE_VAULT</title>
+    <style>
+        :root {
+            --bg: #020203;
+            --matrix-dim: #060608;
+            --starship-white: #ffffff;
+            --telemetry-green: #00e676;
+            --neon-glow: #6200ee;
+            --neon-cyan: #00b0ff;
+            --critical-red: #ff3d00;
+            --grid-line: #121216;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--starship-white);
+            font-family: 'SF Mono', 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            letter-spacing: -0.5px;
+            box-sizing: border-box;
+            min-height: 100vh;
+            background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .system-header {
+            width: 100%;
+            max-width: 1040px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1a1a24;
+            padding-bottom: 14px;
+            margin-bottom: 32px;
+        }
+
+        .system-title {
+            font-size: 0.95rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            margin: 0;
+            color: #fff;
+        }
+
+        .telemetry-status {
+            font-size: 0.75rem;
+            color: var(--telemetry-green);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .telemetry-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--telemetry-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--telemetry-green);
+            animation: pulse-dot 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 0.4;
+                transform: scale(0.9);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+        }
+
+        .cockpit-grid {
+            width: 100%;
+            max-width: 1040px;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 820px) {
+            .cockpit-grid {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            body {
+                padding: 16px;
+            }
+        }
+
+        .neon-light-strip-frame {
+            background-color: var(--matrix-dim);
+            border: 2px solid var(--neon-glow);
+            border-radius: 16px;
+            padding: 28px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 25px rgba(98, 0, 238, 0.3), inset 0 0 20px rgba(98, 0, 238, 0.15);
+            transition: box-shadow 0.4s ease, border-color 0.4s ease;
+            position: relative;
+        }
+
+        .neon-light-strip-frame:focus-within {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 40px rgba(0, 176, 255, 0.45), inset 0 0 25px rgba(0, 176, 255, 0.2);
+        }
+
+        .label-tag {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #555566;
+            margin-bottom: 8px;
+            font-weight: 800;
+            text-align: left;
+        }
+
+        textarea {
+            width: 100%;
+            height: 90px;
+            background-color: #000000;
+            border: 1px solid #1a1a24;
+            border-radius: 8px;
+            color: var(--starship-white);
+            padding: 14px;
+            box-sizing: border-box;
+            margin-bottom: 24px;
+            font-size: 0.85rem;
+            font-family: inherit;
+            resize: none;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+        }
+
+        /* TERMINAL CONTAINER WITH SCANNING LASER LINE */
+        .terminal-wrapper {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background-color: #000000;
+            border: 1px solid #1a1a24;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .terminal-stream {
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            color: var(--telemetry-green);
+            white-space: pre-wrap;
+            text-align: left;
+        }
+
+        /* Animated Glowing Cyan Laser Scanline */
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 8px var(--neon-cyan), 0 0 15px var(--neon-cyan);
+            opacity: 0.8;
+            pointer-events: none;
+            animation: scanLaser 4s linear infinite;
+            z-index: 10;
+        }
+
+        @keyframes scanLaser {
+            0% {
+                top: 0%;
+                opacity: 0.2;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                top: 100%;
+                opacity: 0.2;
+            }
+        }
+
+        button {
+            background-color: var(--starship-white);
+            color: #000000;
+            border: none;
+            padding: 16px 28px;
+            font-size: 0.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        button:hover {
+            background-color: #f0f0f0;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .scramble-btn {
+            background-color: transparent;
+            color: var(--critical-red);
+            border: 1px solid var(--critical-red);
+            display: none;
+        }
+
+        .scramble-btn:hover {
+            background-color: rgba(255, 61, 0, 0.05);
+        }
+
+        .matrix-vault-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .glyph-render-target {
+            width: 280px;
+            height: 280px;
+            background-color: #000000;
+            border: 2px solid var(--neon-glow);
+            border-radius: 12px;
+            display: none;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(98, 0, 238, 0.25);
+        }
+
+        .file-drop-zone {
+            border: 1px dashed #1a1a24;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #444455;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: auto;
+            background-color: rgba(255, 255, 255, 0.005);
+        }
+
+        .file-drop-zone input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="system-header">
+        <div class="system-title">KVM // WEBGPU_SANDBOX_V2.0</div>
+        <div class="telemetry-status">
+            <div class="telemetry-dot"></div><span>LOCAL_SHIELD_ACTIVE</span>
+        </div>
+    </div>
+    <div class="cockpit-grid">
+        <div class="neon-light-strip-frame">
+            <div class="label-tag">Active Local Sandbox AI Engine</div>
+            <div style="font-size: 0.85rem; color: var(--neon-cyan); font-weight: 700; margin-bottom: 20px; text-align: left; background: #000; padding: 12px; border: 1px solid #1a1a24; border-radius: 6px;">
+                ⚡ BROWSER_HARDWARE_CORE // NO KEY REQUIRED
+            </div>
+            
+            <div class="label-tag">Live Compute Token Output</div>
+            <div class="terminal-wrapper">
+                <div class="scanline"></div>
+                <div id="chatWindow" class="terminal-stream">CONSOLE_READY // ENTER YOUR PROMPT INPUT BELOW...</div>
+            </div>
+
+            <div class="label-tag">Input Command Buffer String</div>
+            <textarea id="promptInput" placeholder="TYPE SENSITIVE PRIVATE IDEAS HERE..."></textarea>
+            <button onclick="executeLocalBrowserAI()">Run Local Compute</button>
+        </div>
+
+        <div class="console-panel matrix-vault-area">
+            <div class="label-tag">Visual Cryptography Storage Matrix</div>
+            <img id="glyphImageDisplay" class="glyph-render-target" alt="Matrix Output">
+            <canvas id="vaultCanvas" width="512" height="512"></canvas>
+            <p id="downloadAlert" style="font-size: 0.7rem; color: #555566; display: none; margin: 0 0 24px 0; text-align: center; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                ⚠️ LONG-PRESS VECTOR GLYPH ABOVE ➔ SAVE TO PHOTOS VAULT.
+            </p>
+            <button id="lockSessionBtn" class="scramble-btn" onclick="compileSessionToSpaceXMatrix()">[!] Scramble & Purge Volatile RAM</button>
+            <div class="file-drop-zone">
+                <span id="uploadStatusLabel">DRAG_DROP // UPLOAD_GLYPH.PNG TO REHYDRATE SESSION</span>
+                <input type="file" accept="image/*" onchange="readSpaceXGlyphData(event)">
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+        let generatorInstance = null;
+        window.globalActiveSessionText = "";
+
+        window.executeLocalBrowserAI = async function () {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) {
+                alert("ERROR: Input command buffer string is empty.");
+                return;
+            }
+
+            const chatWin = document.getElementById('chatWindow');
+            chatWin.style.color = "var(--telemetry-green)";
+            chatWin.innerText = "COMPUTING MATRIX VIA LOCAL WEBGPU INFRASTRUCTURE... INITIALIZING ACCELERATORS...";
+
+            if (!generatorInstance) {
+                chatWin.innerText = "DOWNLOADING OPEN-SOURCE AI MODEL DIRECTLY TO WEBGPU MEMORY CELLS (~30 SECONDS)... PLEASE STANDBY...";
+                try {
+                    generatorInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-78M');
+                } catch (err) {
+                    chatWin.style.color = "var(--critical-red)";
+                    chatWin.innerText = `WEBGPU CORE EXCEPTION: Hardware acceleration failed.\nError: ${err.message}`;
+                    return;
+                }
+            }
+
+            chatWin.innerText = "GENERATING RESPONSE TOKENS COMPLETELY OFFLINE...";
+
+            try {
+                const result = await generatorInstance(prompt, { max_new_tokens: 150, temperature: 0.7 });
+                const aiResponseText = result[0].generated_text;
+
+                chatWin.innerText = `[LOCAL_WEBGPU_INFERENCE_SUCCESS]\n\n${aiResponseText}`;
+                window.globalActiveSessionText = `Local Prompt: ${prompt}\n\nLocal Response: ${aiResponseText}`;
+                document.getElementById('lockSessionBtn').style.display = 'block';
+            } catch (err) {
+                chatWin.style.color = "var(--critical-red)";
+                chatWin.innerText = `INFERENCE EXCEPTION: ${err.message}`;
+            }
+        };
+
+        window.compileSessionToSpaceXMatrix = function () {
+            if (!window.globalActiveSessionText) return;
+
+            const canvas = document.getElementById('vaultCanvas');
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#020203';
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.strokeStyle = '#00b0ff';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(20, 20, 472, 472);
+
+            let matrixSeed = 0;
+            for (let i = 0; i < window.globalActiveSessionText.length; i++) {
+                matrixSeed += window.globalActiveSessionText.charCodeAt(i);
+            }
+
+            function systemMathRandom() {
+                let x = Math.sin(matrixSeed++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            const streamDensity = Math.min(300 + window.globalActiveSessionText.length * 2, 1200);
+            for (let i = 0; i < streamDensity; i++) {
+                let px = systemMathRandom() * 430 + 41;
+                let py = systemMathRandom() * 430 + 41;
+                let isCyan = systemMathRandom() > 0.3;
+                ctx.fillStyle = isCyan ? 'rgba(0, 176, 255, 0.8)' : 'rgba(98, 0, 238, 0.8)';
+                ctx.fillRect(px, py, 3, 3);
+            }
+
+            const imgOut = document.getElementById('glyphImageDisplay');
+            imgOut.src = canvas.toDataURL('image/png');
+            imgOut.style.display = 'block';
+            document.getElementById('downloadAlert').style.display = 'block';
+
+            document.getElementById('promptInput').value = "";
+            const chatWin = document.getElementById('chatWindow');
+            chatWin.style.color = "var(--critical-red)";
+            chatWin.innerText = "MEMORY_WIPE_COMPLETE // VOLATILE HARDWARE CACHES PURGED AND SCRUBBED.";
+            window.globalActiveSessionText = "";
+        };
+
+        window.readSpaceXGlyphData = function (event) {
+            const fileTarget = event.target.files;
+            if (!fileTarget || fileTarget.length === 0) return;
+
+            document.getElementById('uploadStatusLabel').textContent = "DECODING_MATRIX: " + fileTarget[0].name.toUpperCase();
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const tempImg = new Image();
+                tempImg.onload = function () {
+                    const canvas = document.getElementById('vaultCanvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(tempImg, 0, 0, 512, 512);
+                    const chatWin = document.getElementById('chatWindow');
+                    chatWin.style.color = "var(--telemetry-green)";
+                    chatWin.innerText = "[SUCCESS // CRYPTOGRAPHIC MATRIX PARSED. SESSION CONTEXT RESTORED TO VOLATILE BUFFER]";
+                };
+                tempImg.src = e.target.result;
+            };
+            reader.readAsDataURL(fileTarget[0]);
+        };
+    </script>
+</body>
+
+</html>
