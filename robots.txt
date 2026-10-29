@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://kvm-labs.github.io/vault/sitemap.xml
